@@ -4,13 +4,10 @@ import json
 
 app = Flask(__name__)
 
-# Enable readable JSON (optional, but good)
-app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
-
 # Initialize BigQuery client
 client = bigquery.Client()
 
-# Your model path
+# BigQuery ML model path
 MODEL = "bufflehead-migration-analysis.bufflehead_in_port.titanic_survival_model"
 
 
@@ -21,42 +18,65 @@ def home():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    # Build query
-    query = f"""
-    SELECT predicted_survived, predicted_survived_probs
-    FROM ML.PREDICT(
-      MODEL `{MODEL}`,
-      (
-        SELECT
-          {data['pclass']} AS pclass,
-          '{data['sex']}' AS sex,
-          {data['age']} AS age,
-          {data['sibsp']} AS sibsp,
-          {data['parch']} AS parch,
-          {data['fare']} AS fare
-      )
-    )
-    """
+        # ✅ Validate input
+        if not data:
+            return {"error": "No input data provided"}, 400
 
-    # Run query
-    result = list(client.query(query).result())[0]
+        required_fields = ["pclass", "sex", "age", "sibsp", "parch", "fare"]
 
-    # Extract probabilities
-    probs = {item['label']: item['prob'] for item in result.predicted_survived_probs}
+        for field in required_fields:
+            if field not in data:
+                return {"error": f"Missing field: {field}"}, 400
 
-    confidence_survived = float(probs.get(1, 0))
-    confidence_not_survived = float(probs.get(0, 0))
+        # Extract values safely
+        pclass = data.get("pclass")
+        sex = data.get("sex")
+        age = data.get("age")
+        sibsp = data.get("sibsp")
+        parch = data.get("parch")
+        fare = data.get("fare")
 
-    # Build response
-    response_data = {
-        "Prediction": "Survived" if result.predicted_survived == 1 else "Did not survive",
-        "Probability of Survival": round(confidence_survived, 4)
-    }
+        # Build query
+        query = f"""
+        SELECT predicted_survived, predicted_survived_probs
+        FROM ML.PREDICT(
+          MODEL `{MODEL}`,
+          (
+            SELECT
+              {pclass} AS pclass,
+              '{sex}' AS sex,
+              {age} AS age,
+              {sibsp} AS sibsp,
+              {parch} AS parch,
+              {fare} AS fare
+          )
+        )
+        """
 
-    # Return pretty JSON
-    return Response(json.dumps(response_data, indent=4), mimetype='application/json')
+        # Run query
+        result = list(client.query(query).result())[0]
+
+        # Extract probabilities
+        probs = {item['label']: item['prob'] for item in result.predicted_survived_probs}
+
+        confidence_survived = float(probs.get(1, 0))
+        confidence_not_survived = float(probs.get(0, 0))
+
+        # Build response
+        response_data = {
+            "Prediction": "Survived" if result.predicted_survived == 1 else "Did not survive",
+            "Probability of Survival": round(confidence_survived, 4),
+            "Probability of Not Survival": round(confidence_not_survived, 4)
+        }
+
+        # Pretty JSON output
+        return Response(json.dumps(response_data, indent=4), mimetype='application/json')
+
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 
 if __name__ == "__main__":
