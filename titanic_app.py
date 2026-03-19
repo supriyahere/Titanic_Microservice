@@ -15,7 +15,7 @@ def predict():
     data = request.json
 
     query = f"""
-    SELECT predicted_survived
+    SELECT predicted_survived, predicted_survived_probs 
     FROM ML.PREDICT(
       MODEL `{MODEL}`,
       (
