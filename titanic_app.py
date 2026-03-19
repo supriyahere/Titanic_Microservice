@@ -31,9 +31,12 @@ def predict():
     """
 
     result = list(client.query(query).result())[0]
-
+    probs = {item['label']: item['prob'] for item in result.predicted_survived_probs}
+    
     return jsonify({
-        "predicted_survival": int(result.predicted_survived)
+    "predicted_survival": int(result.predicted_survived),
+    "confidence_survived": probs.get(1, 0),
+    "confidence_not_survived": probs.get(0, 0)
     })
 
 if __name__ == "__main__":
