@@ -68,8 +68,8 @@ def predict():
         # Build response
         response_data = {
             "Prediction": "Survived" if result.predicted_survived == 1 else "Did not survive",
-            "Probability of Survival": round(confidence_survived, 4),
-            "Probability of Not Survival": round(confidence_not_survived, 4)
+            "Survival Probability (%)": round(confidence_survived * 100, 2),
+            "Non-Survival Probability (%)": round(confidence_not_survived * 100, 2)
         }
 
         # Pretty JSON output
