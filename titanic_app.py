@@ -4,7 +4,7 @@ from google.cloud import bigquery
 app = Flask(__name__)
 client = bigquery.Client()
 
-MODEL = "bufflehead-migration-analysis.bufflehead_in_port.titanic_model"
+MODEL = "bufflehead-migration-analysis.bufflehead_in_port.titanic_automl_model"
 
 @app.route("/")
 def home():
